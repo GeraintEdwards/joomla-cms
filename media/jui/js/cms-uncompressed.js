@@ -145,8 +145,28 @@ if (typeof(Joomla) === 'undefined') {
 			} else {
 				target.toggle(showfield);
 			}
-		}
+			// disable or enable the required attribute as required
+			if (showfield) {
+				target.find('input, select, textarea').each( function(idx, inputElement){
+					if ($(inputElement).data('showon-required')) {
+						$(inputElement).attr('required', true);
+						if ($(inputElement).data('showon-required-class')) {
+							$(inputElement).addClass('required');
+						}
+					}
+				});				
+			} else {
+				target.find('input, select, textarea').each( function(idx, inputElement){
+					if ($(inputElement).attr('required')) {
+						$(inputElement).data('showon-required', 1);
+						$(inputElement).data('showon-required-class', $(inputElement).hasClass('required'));
+						$(inputElement).attr('required', false);
+						$(inputElement).removeClass('required');
+					}
+				});
+			}
 
+		}
 		/**
 		 * Method for setup the 'showon' feature, for the fields in given container
 		 * @param {HTMLElement} container
