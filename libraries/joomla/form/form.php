@@ -2023,6 +2023,12 @@ class JForm
 	 */
 	protected function validateField(SimpleXMLElement $element, $group = null, $value = null, Registry $input = null)
 	{
+		// Are there any showon conditions which mean that this required state and valid formatting don't need to be tested 
+		if (!$this->fieldVisibleOnForm( $element, $group, $value, $input))
+		{
+			return true;
+		}
+		
 		$valid = true;
 
 		// Check if the field is required.
@@ -2030,11 +2036,6 @@ class JForm
 
 		if ($required)
 		{
-			// Are there any showon conditions which mean that this required state doesn't need to be tested 
-			if (!$this->fieldVisibleOnForm( $element, $group, $value, $input))
-			{
-				return true;
-			}
 
 			// If the field is required and the value is empty return an error message.
 			if (($value === '') || ($value === null))
