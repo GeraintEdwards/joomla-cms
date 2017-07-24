@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @package     Joomla.Platform
  * @subpackage  Form
@@ -6,7 +7,6 @@
  * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE
  */
-
 defined('JPATH_PLATFORM') or die;
 
 use Joomla\Registry\Registry;
@@ -27,6 +27,7 @@ jimport('joomla.filesystem.path');
  */
 class JForm
 {
+
 	/**
 	 * The Registry data store for form fields during display.
 	 *
@@ -516,9 +517,9 @@ class JForm
 		foreach ($elements as $element)
 		{
 			// Get the field groups for the element.
-			$attrs  = $element->xpath('ancestor::fields[@name]/@name');
+			$attrs = $element->xpath('ancestor::fields[@name]/@name');
 			$groups = array_map('strval', $attrs ? $attrs : array());
-			$group  = implode('.', $groups);
+			$group = implode('.', $groups);
 
 			// If the field is successfully loaded add it to the result array.
 			if ($field = $this->loadField($element, $group))
@@ -982,7 +983,7 @@ class JForm
 			$dom = dom_import_simplexml($old);
 
 			// Get the parent element, this should be the fieldset
-			$parent   = $dom->parentNode;
+			$parent = $dom->parentNode;
 			$fieldset = $parent->getAttribute('name');
 
 			$parent->removeChild($dom);
@@ -1029,7 +1030,6 @@ class JForm
 		}
 
 		// We couldn't find a parent so we are adding it at root level
-
 		// Add field to the form.
 		self::addNode($this->xml, $element);
 
@@ -1227,7 +1227,7 @@ class JForm
 			if ($valid instanceof Exception)
 			{
 				$this->errors[] = $valid;
-				$return         = false;
+				$return = false;
 			}
 		}
 
@@ -1318,9 +1318,9 @@ class JForm
 					{
 						$showTime = (string) $element['showtime'];
 						$showTime = ($showTime && $showTime != 'false');
-						$format   = ($showTime) ? JText::_('DATE_FORMAT_FILTER_DATETIME') : JText::_('DATE_FORMAT_FILTER_DATE');
-						$date     = date_parse_from_format($format, $value);
-						$value    = (int) $date['year'] . '-' . (int) $date['month'] . '-' . (int) $date['day'];
+						$format = ($showTime) ? JText::_('DATE_FORMAT_FILTER_DATETIME') : JText::_('DATE_FORMAT_FILTER_DATE');
+						$date = date_parse_from_format($format, $value);
+						$value = (int) $date['year'] . '-' . (int) $date['month'] . '-' . (int) $date['day'];
 
 						if ($showTime)
 						{
@@ -1360,9 +1360,9 @@ class JForm
 					{
 						$showTime = (string) $element['showtime'];
 						$showTime = ($showTime && $showTime != 'false');
-						$format   = ($showTime) ? JText::_('DATE_FORMAT_FILTER_DATETIME') : JText::_('DATE_FORMAT_FILTER_DATE');
-						$date     = date_parse_from_format($format, $value);
-						$value    = (int) $date['year'] . '-' . (int) $date['month'] . '-' . (int) $date['day'];
+						$format = ($showTime) ? JText::_('DATE_FORMAT_FILTER_DATETIME') : JText::_('DATE_FORMAT_FILTER_DATE');
+						$date = date_parse_from_format($format, $value);
+						$value = (int) $date['year'] . '-' . (int) $date['month'] . '-' . (int) $date['day'];
 
 						if ($showTime)
 						{
@@ -1415,8 +1415,7 @@ class JForm
 
 				// If there is no protocol and the relative option is not specified,
 				// we assume that it is an external URL and prepend http://.
-				if (($element['type'] == 'url' && !$protocol &&  !$element['relative'])
-					|| (!$element['type'] == 'url' && !$protocol))
+				if (($element['type'] == 'url' && !$protocol && !$element['relative']) || (!$element['type'] == 'url' && !$protocol))
 				{
 					$protocol = 'http';
 
@@ -1556,7 +1555,7 @@ class JForm
 				{
 					$required = ((string) $element['required'] == 'true' || (string) $element['required'] == 'required');
 
-					if (($value === '' || $value === null) && ! $required)
+					if (($value === '' || $value === null) && !$required)
 					{
 						$return = '';
 					}
@@ -2031,6 +2030,12 @@ class JForm
 
 		if ($required)
 		{
+			// Are there any showon conditions which mean that this required state doesn't need to be tested 
+			if (!$this->fieldVisibleOnForm( $element, $group, $value, $input))
+			{
+				return true;
+			}
+
 			// If the field is required and the value is empty return an error message.
 			if (($value === '') || ($value === null))
 			{
@@ -2093,6 +2098,114 @@ class JForm
 		}
 
 		return true;
+	}
+
+	/**
+	 * Method to determing if field is visible on form based on showon attributes and conditional values
+	 *
+	 * @param   SimpleXMLElement  $element  The XML element object representation of the form field.
+	 * @param   string            $group    The optional dot-separated form group path on which to find the field.
+	 * @param   mixed             $value    The optional value to use as the default for the field.
+	 * @param   Registry          $input    An optional Registry object with the entire data set to validate
+	 *                                      against the entire form.
+	 *
+	 * @return  boolean  Boolean true if field value is valid, Exception on failure.
+	 *
+	 * @since   11.1
+	 * @throws  InvalidArgumentException
+	 * @throws  UnexpectedValueException
+	 */
+	protected function fieldVisibleOnForm(SimpleXMLElement $element, $group = null, $value = null, Registry $input = null)
+	{
+		if ($element["showon"])
+		{
+			// default is to show the field
+			$showfield = true;
+			if (!$input)
+			{
+				$input	= new Registry();
+			}
+			static $indexedFields = false;
+			if (!$indexedFields)
+			{
+				$indexedFields = array();
+				$fields = $this->findFieldsByGroup();
+				foreach ($fields as $field)
+				{
+					$name = (string) $field['name'];
+					// Get the field groups for the element.
+					$attrs = $field->xpath('ancestor::fields[@name]/@name');
+					$groups = array_map('strval', $attrs ? $attrs : array());
+					$group = implode('.', $groups);
+
+					$indexedFields[$name] = $group;
+				}
+			}
+			// do not pass form control through - we need to get the field names to get the values from the input
+			$jsondata = JFormHelper::parseShowOnConditions($element["showon"], "", $group);
+
+			foreach ($jsondata as $j => $showonCondition)
+			{
+				$showonCondition['valid'] = 0;
+
+				$group = "";
+				if (isset($indexedFields[$showonCondition["field"]]))
+				{
+					$group = $indexedFields[$showonCondition["field"]];					
+				}
+				else {
+					return true;
+				}
+				$conditionalValue = $input->get(($group ? $group . "." : "") . $showonCondition["field"]);
+
+				// Test if any of the values of the field exists in showon conditions
+				if (!is_array($conditionalValue))
+				{
+					$conditionalValue = array($conditionalValue);
+				}
+				foreach ($conditionalValue as $cv)
+				{
+
+					// ":" Equal to one or more of the values condition
+					if ($showonCondition['sign'] == '=' && in_array($cv, $showonCondition['values']))
+					{
+						$showonCondition['valid'] = 1;
+					}
+					// "!:" Not equal to one or more of the values condition
+					if ($showonCondition['sign'] == '!=' && in_array($cv, $showonCondition['values']))
+					{
+						$showonCondition['valid'] = 1;
+					}
+				}
+
+				// Verify conditions
+				// First condition (no operator): current condition must be valid
+				if ($showonCondition['op'] === '' || $j == 0)
+				{
+					if ($showonCondition['valid'] === 0)
+					{
+						$showfield = false;
+					}
+				}
+				// Other conditions (if exists)
+				else
+				{
+					// AND operator: both the previous and current conditions must be valid
+					if ($showonCondition['op'] === 'AND' && $showonCondition['valid'] + $jsondata[j - 1]['valid'] < 2)
+					{
+						$showfield = false;
+					}
+					// OR operator: one of the previous and current conditions must be valid
+					if ($showonCondition['op'] === 'OR' && $showonCondition['valid'] + $jsondata[j - 1]['valid'] > 0)
+					{
+						$showfield = true;
+					}
+				}
+			}
+			return $showfield;
+
+		}
+		return false;
 	}
 
 	/**
@@ -2261,7 +2374,6 @@ class JForm
 	{
 		// The assumption is that the inputs are at the same relative level.
 		// So we just have to scan the children and deal with them.
-
 		// Update the attributes of the child node.
 		foreach ($new->attributes() as $name => $value)
 		{
@@ -2374,4 +2486,5 @@ class JForm
 	{
 		return $this->findField($name, $group);
 	}
+
 }
