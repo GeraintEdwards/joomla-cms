@@ -111,6 +111,10 @@ class ActionlogsHelper
 				$source = JPATH_SITE . '/modules/' . $extension;
 				break;
 
+			case 'pkg':
+				$source = JPATH_SITE;
+				break;
+
 			case 'plg':
 				$parts = explode('_', $extension, 3);
 				$source = JPATH_PLUGINS . '/' . $parts[1] . '/' . $parts[2];
